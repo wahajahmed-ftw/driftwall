@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 (2026-11-14)
+
+- **Smooth live scenes now match your display:**
+  - With *Smooth live scenes* on, The Hill runs at each monitor's own refresh rate, for example 144 Hz on one monitor and 60 Hz on another.
+  - It is paced by each display's vblank, so no frame is shown twice.
+  - With the setting off, scenes still run at 30 fps.
+- **Frame-rate logging:** the engine log records each scene's measured frame rate a few seconds after it starts.
+
 ## 1.0.0 (2026-11-13)
 
 The first public release.

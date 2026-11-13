@@ -43,6 +43,7 @@ struct Monitor {
     RECT rect{};        // physical pixels, virtual-screen coordinates
     RECT work{};
     UINT dpi = 96;
+    UINT refreshHz = 60;
 };
 
 // ---- graphics (gfx.cpp) ----
@@ -57,7 +58,9 @@ struct Gfx {
 bool GfxInit(Gfx& g);
 void GfxShutdown(Gfx& g);
 HWND CreateSurfaceWindow(HWND parent, const RECT& rectInParent);
-IDXGISwapChain1* CreateSwapChain(Gfx& g, HWND hwnd, UINT w, UINT h);
+// With frameWaitable, a flip swap chain gets a frame latency waitable object (vsync pacing). Check the
+// swap chain's flags: the blt fallback can't have one.
+IDXGISwapChain1* CreateSwapChain(Gfx& g, HWND hwnd, UINT w, UINT h, bool frameWaitable = false);
 ID3DBlob* CompileShader(const char* source, const char* entry, const char* target);
 void FreeShaderCompiler();  // call once every blob from CompileShader has been released
 bool SavePng(const std::wstring& path, const void* bgra, UINT w, UINT h, UINT stride);
@@ -70,12 +73,15 @@ public:
     virtual void Tick(double now) = 0;
     // Seconds between ticks while running; <= 0 means "no ticks needed".
     virtual double Interval() const = 0;
+    // A handle that is signaled when the display is ready for the next frame. Renderers that return one
+    // are ticked by it instead of by Interval()'s timer.
+    virtual HANDLE FrameWaitable() const { return nullptr; }
     double nextTick = 0;
     HWND hwnd = nullptr;
 };
 
 struct EngineSettings {
-    int sceneFps = 30;
+    int sceneFps = 30;  // 0 = match each display's refresh rate, synced to vblank
 };
 
 std::unique_ptr<Renderer> CreateVideoRenderer(Gfx& g, HWND parent, const RECT& rectInParent, const Wallpaper& wp);

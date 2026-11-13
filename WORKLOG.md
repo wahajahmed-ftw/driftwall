@@ -2,6 +2,19 @@
 
 Decisions, measurements and open items, newest first. Release notes live in [CHANGELOG.md](CHANGELOG.md).
 
+## 2026-11-14: v1.1.0, scenes at the display's refresh rate
+
+- **Why:** the horizontal monitor (Dell SE2426H) runs at 144 Hz, and The Hill was capped at 60 fps.
+- **Change:**
+  - `"sceneFps": 0` means "match the display".
+  - The scene's flip swap chain gets a frame latency waitable object (max latency 1, `Present(1, 0)`).
+  - The main loop waits on it next to the timer, so each monitor is paced by its own vblank.
+  - The gallery's *Smooth live scenes* checkbox now writes 0; it used to write 60.
+- **Measured** with both wallpapers animating and pause-when-covered off:
+  - The Hill ran at 139.3 fps on the 144 Hz screen while covered by windows.
+  - Engine CPU was 2.8 % (it was 1–2.5 % at 60 fps).
+  - Private working set was 44.5 MB, unchanged.
+
 ## 2026-11-13: v1.0.0, production pass and public release
 
 **Hardening**

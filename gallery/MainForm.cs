@@ -399,7 +399,8 @@ namespace Driftwall
                 var startup = check("Start with Windows", "Your wallpapers come back automatically when you sign in.", lib.StartWithWindows);
                 var pause = check("Pause when a window covers the display",
                     "Saves CPU and GPU while you work, watch videos or play games full screen.", lib.PauseWhenCovered);
-                var smooth = check("Smooth live scenes (60 fps)", "Live scenes like The Hill run at 30 fps by default, which uses less GPU.", lib.SceneFps >= 60);
+                var smooth = check("Smooth live scenes", "Live scenes run at each display's refresh rate (for example 144 Hz) in sync with the screen. Off: 30 fps, which uses less GPU.",
+                    lib.SceneFps <= 0 || lib.SceneFps >= 60);
 
                 var lbl = new Label { Text = "Library folder: " + lib.LibDir, ForeColor = Theme.Muted, AutoSize = false };
                 lbl.SetBounds(Theme.P(20), y + Theme.P(4), Theme.P(480), Theme.P(22));
@@ -428,7 +429,7 @@ namespace Driftwall
                 f.ShowDialog(this);
                 if (startup.Checked != lib.StartWithWindows) lib.StartWithWindows = startup.Checked;
                 if (pause.Checked != lib.PauseWhenCovered) lib.PauseWhenCovered = pause.Checked;
-                int fps = smooth.Checked ? 60 : 30;
+                int fps = smooth.Checked ? 0 : 30;  // 0: match each display's refresh rate
                 if (fps != lib.SceneFps) lib.SceneFps = fps;
                 UpdateEngineStatus();
             }

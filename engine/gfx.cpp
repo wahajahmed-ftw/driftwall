@@ -74,7 +74,7 @@ HWND CreateSurfaceWindow(HWND parent, const RECT& r) {
                            GetModuleHandleW(nullptr), nullptr);
 }
 
-IDXGISwapChain1* CreateSwapChain(Gfx& g, HWND hwnd, UINT w, UINT h) {
+IDXGISwapChain1* CreateSwapChain(Gfx& g, HWND hwnd, UINT w, UINT h, bool frameWaitable) {
     DXGI_SWAP_CHAIN_DESC1 d{};
     d.Width = w;
     d.Height = h;
@@ -84,12 +84,14 @@ IDXGISwapChain1* CreateSwapChain(Gfx& g, HWND hwnd, UINT w, UINT h) {
     d.BufferCount = 2;
     d.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     d.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+    if (frameWaitable) d.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
     IDXGISwapChain1* sc = nullptr;
     HRESULT hr = g.factory->CreateSwapChainForHwnd(g.device, hwnd, &d, nullptr, nullptr, &sc);
     if (FAILED(hr)) {
         Log("Flip swap chain failed 0x%08lx, falling back to blt model", hr);
         d.BufferCount = 1;
         d.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+        d.Flags = 0;
         hr = g.factory->CreateSwapChainForHwnd(g.device, hwnd, &d, nullptr, nullptr, &sc);
     }
     if (FAILED(hr)) { Log("CreateSwapChainForHwnd failed 0x%08lx", hr); return nullptr; }

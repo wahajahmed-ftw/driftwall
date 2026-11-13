@@ -109,6 +109,14 @@ Each renderer reports an `Interval()`, the number of seconds between ticks; `0` 
 3. waits in `MsgWaitForMultipleObjectsEx` on the timer **and** the message queue;
 4. ticks the renderers that are due, then drains messages.
 
+**Display-paced renderers:**
+- A scene running at the display's refresh rate is not timed by the clock.
+- **Setup:** its swap chain is created with `DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT` and a maximum frame latency of 1, and it presents with sync interval 1.
+- **Signal:** the waitable object is signaled once per vblank of *its own* monitor. A 144 Hz monitor and a 60 Hz monitor each get exactly their own rate.
+- **Waiting:** those handles go into the same `MsgWaitForMultipleObjectsEx` call as the timer.
+- **Why not a timer:** a timer at 1/144 s would drift against the real vblank and show an occasional doubled frame. The waitable can't drift.
+- **Fallback:** a blt-model swap chain has no waitable, so the scene uses the timer at the refresh rate instead.
+
 When every renderer is paused there is no timer to arm. The engine blocks on messages alone and uses no CPU.
 
 ### Pausing
@@ -142,7 +150,7 @@ What a pause does depends on the wallpaper:
 - **Terrain:** a 257×257 grid displaced in the vertex shader by three octaves of classic Perlin noise. It is drawn with alpha blending that matches three.js `NormalBlending`, with the camera and projection of the original three.js scene.
 - **Shaders:** compiled at startup with `d3dcompiler_47.dll`, which ships with Windows. The DLL is unloaded once setup is done.
 - **Clock and date:** drawn with GDI into a DIB, using the scene's fonts loaded privately with `AddFontResourceEx(FR_PRIVATE)`. The DIB is converted to an alpha texture and drawn as a quad. The texture is redrawn only when the text changes, about once a minute.
-- **Frame rate:** 30 fps by default, 60 fps as an option in Settings.
+- **Frame rate:** 30 fps by default. With *Smooth live scenes* on (`"sceneFps": 0`), each scene runs at its own monitor's refresh rate, paced by the display (see *Render loop*).
 
 ### Recovery
 

@@ -81,6 +81,11 @@ std::vector<Monitor> EnumerateMonitors() {
             m.work = mi.rcWork;
             UINT dx = 96, dy = 96;
             if (SUCCEEDED(GetDpiForMonitor(hm, MDT_EFFECTIVE_DPI, &dx, &dy))) m.dpi = dx;
+            DEVMODEW dm{};
+            dm.dmSize = sizeof(dm);
+            // 0 and 1 mean "hardware default"
+            if (EnumDisplaySettingsW(mi.szDevice, ENUM_CURRENT_SETTINGS, &dm) && dm.dmDisplayFrequency > 1)
+                m.refreshHz = dm.dmDisplayFrequency;
             DISPLAY_DEVICEW dd{};
             dd.cb = sizeof(dd);
             if (EnumDisplayDevicesW(mi.szDevice, 0, &dd, EDD_GET_DEVICE_INTERFACE_NAME)) m.id = dd.DeviceID;
@@ -429,29 +434,41 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int) {
     if (!timer) timer = CreateWaitableTimerW(nullptr, FALSE, nullptr);
 
     MSG msg;
+    std::vector<HANDLE> waits;
+    std::vector<Renderer*> paced;  // renderers ticked by their display, in the same order as waits
     for (;;) {
         double now = NowSeconds(), next = 1e300;
+        waits.clear();
+        paced.clear();
         for (auto& s : g_slots) {
-            if (!s.renderer || s.renderer->Interval() <= 0) continue;
-            if (s.renderer->nextTick < now - 1) s.renderer->nextTick = now;  // resumed after a pause
-            next = std::min(next, s.renderer->nextTick);
+            Renderer* r = s.renderer.get();
+            if (!r || r->Interval() <= 0) continue;
+            if (HANDLE frame = r->FrameWaitable()) {
+                waits.push_back(frame);
+                paced.push_back(r);
+                continue;
+            }
+            if (r->nextTick < now - 1) r->nextTick = now;  // resumed after a pause
+            next = std::min(next, r->nextTick);
         }
-        DWORD handles = 0;
         if (next < 1e300) {
             LARGE_INTEGER due;
             due.QuadPart = -(LONGLONG)(std::max(0.0, next - now) * 1e7);
             if (due.QuadPart == 0) due.QuadPart = -1;
             SetWaitableTimer(timer, &due, 0, nullptr, nullptr, FALSE);
-            handles = 1;
+            waits.push_back(timer);
         }
         // With nothing animating (all paused) this waits for messages only: zero CPU.
-        MsgWaitForMultipleObjectsEx(handles, &timer, INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+        DWORD ret = MsgWaitForMultipleObjectsEx((DWORD)waits.size(), waits.data(), INFINITE, QS_ALLINPUT,
+                                                MWMO_INPUTAVAILABLE);
 
         now = NowSeconds();
+        // Only the signaled waitable is consumed; any other ready display is picked up on the next pass.
+        if (ret - WAIT_OBJECT_0 < paced.size()) paced[ret - WAIT_OBJECT_0]->Tick(now);
         for (auto& s : g_slots) {
             Renderer* r = s.renderer.get();
             double iv = r ? r->Interval() : 0;
-            if (iv <= 0 || now < r->nextTick - 0.0005) continue;
+            if (iv <= 0 || r->FrameWaitable() || now < r->nextTick - 0.0005) continue;
             r->Tick(now);
             r->nextTick += iv;
             if (r->nextTick < now) r->nextTick = now + iv;

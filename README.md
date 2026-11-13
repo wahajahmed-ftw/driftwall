@@ -73,7 +73,7 @@ To remove Driftwall, run **`uninstall.cmd`**. It stops the engine, gives each mo
 2. **Click a wallpaper** in the library. It appears on that monitor immediately.
 3. **Add your own** with *Add wallpapers*, or drag files or folders onto the window.
 4. **Right-click a wallpaper** to put it on another monitor or on all of them, rename it, open its folder or delete it.
-5. Open **Settings** to change startup, pausing when a window covers the monitor, 30 or 60 fps scenes, and to start or stop the engine.
+5. Open **Settings** to change startup, pausing when a window covers the monitor, smooth scenes at your display's refresh rate, and to start or stop the engine.
 
 ## How it works
 
@@ -95,7 +95,7 @@ For the full design, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). It covers
 | Type | Formats | How it is drawn | Typical memory |
 |---|---|---|---|
 | Video | MP4, MOV, M4V, MKV, WebM, AVI, WMV | Hardware decoding through Media Foundation, cropped to fill the monitor, muted and looping | ~30 MB for 1080p |
-| Live scene | Built in (*The Hill*) | Native Direct3D 11 shaders, 30 or 60 fps | ~5 MB |
+| Live scene | Built in (*The Hill*) | Native Direct3D 11 shaders, 30 fps or synced to the display (e.g. 144 Hz) | ~5 MB |
 | Image | JPG, PNG, WebP, BMP | Set as the normal Windows wallpaper for that monitor | 0 MB |
 
 ### Measured memory and CPU use

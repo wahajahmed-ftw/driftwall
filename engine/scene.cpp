@@ -2,6 +2,7 @@
 // "hill": port of "The Hill" (GLSL Hills by Yoichi Kobayashi, https://codepen.io/ykob/pen/aBrjaR),
 // including the Lively clock/date overlay, without a browser engine.
 #include "engine.h"
+#include <dxgi1_3.h>
 #include <cmath>
 #include <cstring>
 #include <vector>
@@ -559,11 +560,17 @@ class SceneRenderer : public Renderer {
     IDXGISwapChain1* swap = nullptr;
     ID3D11RenderTargetView* rtv = nullptr;
     ID3D11DepthStencilView* dsv = nullptr;
-    double interval, last = 0;
+    HANDLE frameWait = nullptr;  // set when the scene is paced by the display's vblank
+    int fps;
+    double interval = 0, last = 0;
     bool paused = false;
+    // The achieved frame rate is logged once, a few seconds after start.
+    double rateStart = 0;
+    int rateFrames = 0;
+    bool rateLogged = false;
 
 public:
-    SceneRenderer(Gfx& gfx, int fps) : g(gfx), scene(gfx), interval(1.0 / std::max(1, std::min(fps, 240))) {}
+    SceneRenderer(Gfx& gfx, int fps) : g(gfx), scene(gfx), fps(fps) {}
 
     bool Init(HWND parent, const RECT& r, const Monitor& mon, const Wallpaper& wp) {
         UINT w = r.right - r.left, h = r.bottom - r.top;
@@ -571,19 +578,33 @@ public:
         if (!scene.Init(wp, w, h, mon.dpi)) return false;
         hwnd = CreateSurfaceWindow(parent, r);
         if (!hwnd) return false;
-        swap = CreateSwapChain(g, hwnd, w, h);
+        bool matchDisplay = fps <= 0;
+        swap = CreateSwapChain(g, hwnd, w, h, matchDisplay);
         if (!swap) return false;
+        DXGI_SWAP_CHAIN_DESC1 desc{};
+        swap->GetDesc1(&desc);
+        IDXGISwapChain2* swap2 = nullptr;
+        if ((desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) &&
+            SUCCEEDED(swap->QueryInterface(IID_PPV_ARGS(&swap2)))) {
+            swap2->SetMaximumFrameLatency(1);
+            frameWait = swap2->GetFrameLatencyWaitableObject();
+            SafeRelease(swap2);
+        }
+        // Without a waitable (blt fallback) a matched rate falls back to a timer at the refresh rate.
+        interval = 1.0 / std::max(1, std::min(matchDisplay ? (int)mon.refreshHz : fps, 240));
         ID3D11Texture2D* bb = nullptr;
         swap->GetBuffer(0, IID_PPV_ARGS(&bb));
         if (bb) g.device->CreateRenderTargetView(bb, nullptr, &rtv);
         SafeRelease(bb);
         dsv = CreateDepth(g, w, h);
-        Log("Scene: %s (%ux%u, %.0f fps)", wp.scene.c_str(), w, h, 1.0 / interval);
+        Log("Scene: %s (%ux%u, %.0f fps%s)", wp.scene.c_str(), w, h, 1.0 / interval,
+            frameWait ? ", synced to the display" : "");
         return rtv && dsv;
     }
 
     ~SceneRenderer() override {
         if (g.context) g.context->OMSetRenderTargets(0, nullptr, nullptr);
+        if (frameWait) CloseHandle(frameWait);
         SafeRelease(dsv);
         SafeRelease(rtv);
         SafeRelease(swap);
@@ -594,16 +615,26 @@ public:
         if (p == paused) return;
         paused = p;
         last = 0;  // don't jump the animation forward after a pause
+        rateStart = 0;
+        rateFrames = 0;
     }
 
     double Interval() const override { return paused ? 0 : interval; }
+    HANDLE FrameWaitable() const override { return paused ? nullptr : frameWait; }
 
     void Tick(double now) override {
         double dt = last ? std::min(now - last, 0.1) : interval;
         last = now;
         // The flip model unbinds the back buffer after Present; rebind each frame.
         scene.Render(rtv, dsv, dt);
-        swap->Present(0, 0);
+        swap->Present(frameWait ? 1 : 0, 0);
+        if (!rateLogged) {
+            if (!rateStart) rateStart = now;
+            else if (++rateFrames, now - rateStart >= 5) {
+                Log("Scene: running at %.1f fps", rateFrames / (now - rateStart));
+                rateLogged = true;
+            }
+        }
     }
 };
 
