@@ -1,0 +1,10 @@
+# Toolchain (downloaded by scripts\get-toolchain.ps1) and build output
+tools/
+build/
+dist/
+
+# Runtime files, if the app is run from inside the repository
+*.log
+*.tmp
+config.json
+Library/

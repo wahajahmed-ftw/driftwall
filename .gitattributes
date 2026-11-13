@@ -1,0 +1,11 @@
+* text=auto
+
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.rc  text eol=crlf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.ttf binary
+*.otf binary

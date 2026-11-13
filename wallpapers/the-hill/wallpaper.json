@@ -1,0 +1,19 @@
+{
+  "title": "The Hill",
+  "type": "scene",
+  "scene": "hill",
+  "thumbnail": "thumb.jpg",
+  "author": "Yoichi Kobayashi",
+  "source": "Built in (native port of GLSL Hills)",
+  "url": "https://codepen.io/ykob/pen/aBrjaR",
+  "params": {
+    "background": "#0e0e0e",
+    "color": "#ffffff",
+    "opacity": 50,
+    "fontColor": "#ffffff",
+    "showTime": true,
+    "showDate": true,
+    "hour12": true,
+    "monthDayFormat": true
+  }
+}

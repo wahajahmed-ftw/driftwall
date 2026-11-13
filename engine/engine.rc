@@ -1,0 +1,37 @@
+#include <winver.h>
+
+// DW_VER_* come from the VERSION file via scripts\build.ps1.
+#ifndef DW_VER_MAJOR
+#define DW_VER_MAJOR 0
+#define DW_VER_MINOR 0
+#define DW_VER_PATCH 0
+#endif
+#define DW_STR2(x) #x
+#define DW_STR(x) DW_STR2(x)
+#define DW_VER_STRING DW_STR(DW_VER_MAJOR) "." DW_STR(DW_VER_MINOR) "." DW_STR(DW_VER_PATCH)
+
+1 ICON "../assets/Driftwall.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION DW_VER_MAJOR, DW_VER_MINOR, DW_VER_PATCH, 0
+PRODUCTVERSION DW_VER_MAJOR, DW_VER_MINOR, DW_VER_PATCH, 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "FileDescription", "Driftwall Engine"
+      VALUE "ProductName", "Driftwall"
+      VALUE "FileVersion", DW_VER_STRING
+      VALUE "ProductVersion", DW_VER_STRING
+      VALUE "OriginalFilename", "DriftwallEngine.exe"
+      VALUE "LegalCopyright", "MIT License"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END
